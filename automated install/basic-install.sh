@@ -2197,6 +2197,8 @@ clone_or_update_repos() {
             }
         fi
     else
+        printf "%b  %b %s (update skipped)\\n"
+        
         #getGitFiles ${PI_HOLE_LOCAL_REPO} ${piholeGitUrl} || {
         #    printf "  %b Unable to clone %s into %s, unable to continue%b\\n" "${COL_LIGHT_RED}" "${piholeGitUrl}" "${PI_HOLE_LOCAL_REPO}" "${NC}"
         #    exit 1
@@ -2206,6 +2208,7 @@ clone_or_update_repos() {
         (cd ${PI_HOLE_LOCAL_REPO} && git reset --hard v5.18.4)
 
         if [[ "${INSTALL_WEB_INTERFACE}" == true ]]; then
+            printf "%b  %b %s (update skipped)\\n"
             #getGitFiles ${webInterfaceDir} ${webInterfaceGitUrl} || {
             #    printf "  %b Unable to clone %s into ${webInterfaceDir}, exiting installer%b\\n" "${COL_LIGHT_RED}" "${webInterfaceGitUrl}" "${NC}"
             #    exit 1
