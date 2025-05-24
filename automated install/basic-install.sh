@@ -74,7 +74,7 @@ webroot="/var/www/html"
 # Two notable scripts are gravity.sh (used to generate the HOSTS file) and advanced/Scripts/webpage.sh (used to install the Web admin interface)
 webInterfaceGitUrl="https://github.com/pi-hole/web.git"
 webInterfaceDir="${webroot}/admin"
-piholeGitUrl="https://github.com/pi-hole/pi-hole.git"
+piholeGitUrl="https://github.com/ganitsu/pi-hole.git"
 PI_HOLE_LOCAL_REPO="/etc/.pihole"
 # List of pihole scripts, stored in an array
 PI_HOLE_FILES=(chronometer list piholeDebug piholeLogFlush setupLCD update version gravity uninstall webpage)
@@ -449,6 +449,14 @@ make_repo() {
     chmod -R a+rX "${directory}"
     # Move back into the original directory
     popd &> /dev/null || return 1
+    # Make sure a specific release is pulled/installed
+    if [[ $directory == '/etc/.pihole' ]]; then
+        git reset --hard v5.18.4
+    else
+        git reset --hard v5.21
+    fi
+    # Move back into the original directory
+    popd &> /dev/null || return 1
     return 0
 }
 
@@ -485,6 +493,13 @@ update_repo() {
     # Data in the repositories is public anyway so we can make it readable by everyone (+r to keep executable permission if already set by git)
     chmod -R a+rX "${directory}"
     # Move back into the original directory
+    popd &> /dev/null || return 1
+    # Forzar pull del v5 correcto en cada repo
+    if [[ $directory == '/etc/.pihole' ]]; then
+        git reset --hard v5.18.4
+    else
+        git reset --hard v5.21
+    fi
     popd &> /dev/null || return 1
     return 0
 }
@@ -2169,36 +2184,33 @@ checkout_pull_branch() {
 }
 
 clone_or_update_repos() {
-    # If the user wants to reconfigure,
     if [[ "${reconfigure}" == true ]]; then
-        printf "  %b Performing reconfiguration, skipping download of local repos\\n" "${INFO}"
-        # Reset the Core repo
-        resetRepo ${PI_HOLE_LOCAL_REPO} || \
-        { printf "  %b Unable to reset %s, exiting installer%b\\n" "${COL_LIGHT_RED}" "${PI_HOLE_LOCAL_REPO}" "${COL_NC}"; \
-        exit 1; \
+        printf "  %b Performing reconfiguration, skipping download of local repos%b\\n" "${INFO}" "${NC}"
+        resetRepo ${PI_HOLE_LOCAL_REPO} || {
+            printf "  %b Unable to reset %s, exiting installer%b\\n" "${COL_LIGHT_RED}" "${PI_HOLE_LOCAL_REPO}" "${NC}"
+            exit 1
         }
-        # If the Web interface was installed,
         if [[ "${INSTALL_WEB_INTERFACE}" == true ]]; then
-            # reset it's repo
-            resetRepo ${webInterfaceDir} || \
-            { printf "  %b Unable to reset %s, exiting installer%b\\n" "${COL_LIGHT_RED}" "${webInterfaceDir}" "${COL_NC}"; \
-            exit 1; \
+            resetRepo ${webInterfaceDir} || {
+                printf "  %b Unable to reset %s, exiting installer%b\\n" "${COL_LIGHT_RED}" "${webInterfaceDir}" "${NC}"
+                exit 1
             }
         fi
-    # Otherwise, a repair is happening
     else
-        # so get git files for Core
-        getGitFiles ${PI_HOLE_LOCAL_REPO} ${piholeGitUrl} || \
-        { printf "  %b Unable to clone %s into %s, unable to continue%b\\n" "${COL_LIGHT_RED}" "${piholeGitUrl}" "${PI_HOLE_LOCAL_REPO}" "${COL_NC}"; \
-        exit 1; \
+        getGitFiles ${PI_HOLE_LOCAL_REPO} ${piholeGitUrl} || {
+            printf "  %b Unable to clone %s into %s, unable to continue%b\\n" "${COL_LIGHT_RED}" "${piholeGitUrl}" "${PI_HOLE_LOCAL_REPO}" "${NC}"
+            exit 1
         }
-        # If the Web interface was installed,
+        # Downgrade Core to v5
+        (cd ${PI_HOLE_LOCAL_REPO} && git reset --hard v5.18.4)
+
         if [[ "${INSTALL_WEB_INTERFACE}" == true ]]; then
-            # get the Web git files
-            getGitFiles ${webInterfaceDir} ${webInterfaceGitUrl} || \
-            { printf "  %b Unable to clone %s into ${webInterfaceDir}, exiting installer%b\\n" "${COL_LIGHT_RED}" "${webInterfaceGitUrl}" "${COL_NC}"; \
-            exit 1; \
+            getGitFiles ${webInterfaceDir} ${webInterfaceGitUrl} || {
+                printf "  %b Unable to clone %s into ${webInterfaceDir}, exiting installer%b\\n" "${COL_LIGHT_RED}" "${webInterfaceGitUrl}" "${NC}"
+                exit 1
             }
+            # Downgrade Web to v5
+            (cd ${webInterfaceDir} && git reset --hard v5.21)
         fi
     fi
 }
@@ -2228,7 +2240,7 @@ FTLinstall() {
 
     # Determine which version of FTL to download
     if [[ "${ftlBranch}" == "master" ]];then
-        url="https://github.com/pi-hole/ftl/releases/latest/download"
+        url="https://github.com/pi-hole/ftl/releases/download/v5.25.2"
     else
         url="https://ftl.pi-hole.net/${ftlBranch}"
     fi
@@ -2447,7 +2459,7 @@ FTLcheckUpdate() {
             FTLversion=$(/usr/bin/pihole-FTL tag)
             local FTLlatesttag
 
-            if ! FTLlatesttag=$(curl -sI https://github.com/pi-hole/FTL/releases/latest | grep --color=never -i Location: | awk -F / '{print $NF}' | tr -d '[:cntrl:]'); then
+            if ! FTLlatesttag=$(curl -sI https://github.com/pi-hole/FTL/releases/download/v5.25.2 | grep --color=never -i Location: | awk -F / '{print $NF}' | tr -d '[:cntrl:]'); then
                 # There was an issue while retrieving the latest version
                 printf "  %b Failed to retrieve latest FTL release metadata" "${CROSS}"
                 return 3
