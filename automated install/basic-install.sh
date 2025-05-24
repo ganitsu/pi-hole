@@ -2214,7 +2214,7 @@ clone_or_update_repos() {
             #    exit 1
             #}
             # Downgrade Web to v5
-            (cd ${webInterfaceDir} && git reset --hard v5.21)
+            # (cd ${webInterfaceDir} && git reset --hard v5.21)
         fi
     fi
 }
